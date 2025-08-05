@@ -1,0 +1,191 @@
+{
+  "name": "Email Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -48
+      ],
+      "id": "8d9955b2-17f4-45a0-b886-d75d145a0037",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bjyaa3pdPKWYjgqM",
+          "name": "ralphmanosca@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=id: {{ $json.id }}\nsubject: {{ $json.Subject }}\nsnippet: {{ $json.snippet }}",
+        "options": {
+          "systemMessage": "### Goal:\nTo manage incoming emails by filtering out unimportant ones and marking them as read\n\n### Tasks:\n1. Check each email that I receive.\n2. Determine if the email is important for me based on my personal context.\n3. If the email is important do nothing.\n4. If the email is not important mark it as read.\n\n### Irrelevant content:\n- Everything related to promotions is not important.\n- Linkedin emails unless its for a direct message or connect with me.\n-\n-\n\n### Personal context:\n- I am a full stack developer who is currently looking for other companies right now seeking a job opportunity.\n- \n-\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "e952c265-7cc2-4b43-8229-da73dc81d973",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -64,
+        128
+      ],
+      "id": "955e3a4a-435b-4cf6-9458-f1cdb63e7a14",
+      "name": "Open.ai",
+      "credentials": {
+        "openAiApi": {
+          "id": "bZJvho6mgNP59DIV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        128
+      ],
+      "id": "a3c5b82e-4087-441a-91b2-ec353e122ec7",
+      "name": "Mark a message as read in Gmail",
+      "webhookId": "f63ebc79-d610-43e5-ba7c-10a5e1f798a9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bjyaa3pdPKWYjgqM",
+          "name": "ralphmanosca@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Email Agent \nAI agent that manages my personal email so that I can mark as read emails that is not important and save time on checking emails everyday.\n",
+        "height": 96,
+        "width": 528
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "afe05c17-8442-402f-982c-430cc3857156",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19878b89645ff92d",
+          "threadId": "19878b89645ff92d",
+          "snippet": "Ralph Laurence, Bank of the Philippine Islands (BPI) is hiring a Web Application Developer ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏ ͏",
+          "payload": {
+            "mimeType": "multipart/alternative"
+          },
+          "sizeEstimate": 105511,
+          "historyId": "5692634",
+          "internalDate": "1754372018000",
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX"
+            },
+            {
+              "id": "CATEGORY_SOCIAL",
+              "name": "CATEGORY_SOCIAL"
+            }
+          ],
+          "From": "LinkedIn <messages-noreply@linkedin.com>",
+          "Subject": "Web Application Developer: Bank of the Philippine Islands (BPI) and Hunter's Hub Incorporated are hiring",
+          "To": "\"Ralph Laurence Mañosca\" <ralphmanosca@gmail.com>"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open.ai": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8e6eed1d-d61f-443a-a300-5b3b4c325b6e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db073587c6b27169e7de0d00324f42205e95d14a44b057d69e01723eaf84f18d"
+  },
+  "id": "ivp7lOO2pPKLnilU",
+  "tags": [
+    {
+      "name": "Daily Use",
+      "id": "WRWJxGvldT4Fdly4",
+      "createdAt": "2025-08-05T05:14:57.759Z",
+      "updatedAt": "2025-08-05T05:14:57.759Z"
+    }
+  ]
+}
