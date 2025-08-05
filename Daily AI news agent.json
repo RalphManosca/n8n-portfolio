@@ -1,0 +1,186 @@
+{
+  "name": "Daily AI news agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e62f888c-b1a7-43d1-bda2-16dc2742b125",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### Goal:\nCheck daily news about automation and artificial intelligence and send a summary email.\n\n### Email should contain:\n- The most important updates on automation and AI.\n- Everything should be well organized and summarized.\n- Provide links if the user wants to read more.\n\n### Context:\n- Today is {{ $now.format('dd-MM-yyyy') }}\n\n### Task Order:\n1. Check the news, latest updates with the \"SerpAPI\" tool.\n2. Create a well structured , organized and summarized email. Provide the links if the user wants to read more.\n3. Send and email with the \"Gmail\" tool.\n\n### Important:\n- Use always the \"SerpAI\" tool to get the most updated information. NEVER provide information without the \"SerpAPI\" tool.\n- After creating the news, use the \"Gmail\" tool to send the daily news.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "a2ae83e0-fb20-45c4-8f4b-fcf5cd353e98",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sendTo": "ralphmanosca@gmail.com",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        368,
+        176
+      ],
+      "id": "1a9c0f23-0979-491f-b1ac-8b836f296f4f",
+      "name": "sendNews",
+      "webhookId": "84bcc8fb-1d6d-4955-b7af-aab368d87c98",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bjyaa3pdPKWYjgqM",
+          "name": "ralphmanosca@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        240,
+        176
+      ],
+      "id": "dc340e78-8f83-4e08-893d-f8d89dd263bd",
+      "name": "SerpAPI (getNews)",
+      "credentials": {
+        "serpApi": {
+          "id": "Hd3D6W1195nXpRVc",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        176
+      ],
+      "id": "4e00f08f-7cf5-42c9-b832-e74094f59ba0",
+      "name": "getInputFromModel",
+      "credentials": {
+        "openAiApi": {
+          "id": "bZJvho6mgNP59DIV",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Daily AI news agent\nThis AI agents send me AI and automation news every 12 hours. It uses \"SerpAPI\" as its source of news.",
+        "width": 496,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "ebb13894-212b-4e3a-abe6-c87a8aba0185",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sendNews": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI (getNews)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getInputFromModel": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "11ce2048-f58d-4aea-85d9-421b1140d276",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db073587c6b27169e7de0d00324f42205e95d14a44b057d69e01723eaf84f18d"
+  },
+  "id": "pTu7uxmeL23d5p1D",
+  "tags": [
+    {
+      "name": "Daily Use",
+      "id": "WRWJxGvldT4Fdly4",
+      "createdAt": "2025-08-05T05:14:57.759Z",
+      "updatedAt": "2025-08-05T05:14:57.759Z"
+    }
+  ]
+}
