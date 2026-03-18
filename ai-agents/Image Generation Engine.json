@@ -1,0 +1,249 @@
+{
+  "name": "Image Generation Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "078a45e6-e8f1-48ec-9fb2-4b76231f0a1f",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "c014dc8a-11f7-41be-8751-65c04af048d5",
+      "name": "Webhook",
+      "webhookId": "078a45e6-e8f1-48ec-9fb2-4b76231f0a1f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Get Record from Video Pipeline').first().json['Reference Images'];\nlet images = [];\n\nfor (const item of items) {\n  images.push({ file: item.url, filename: item.filename});\n}\n\nreturn [{ json: { images: images } }];;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b1198af6-0cf4-4d6a-9cb7-0d2d85ad2459",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        208
+      ],
+      "id": "b8aa2211-5732-4f80-8fc7-d0257e95b422",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "1TGflKyLhnMETbtC",
+          "name": "Anthropic account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "base": {
+          "__rl": true,
+          "value": "appJKpg6FAG7tOM9C",
+          "mode": "list",
+          "cachedResultName": "Video Content Engine",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblBZ8XpleREAZaB1",
+          "mode": "list",
+          "cachedResultName": "Video_Pipeline",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C/tblBZ8XpleREAZaB1"
+        },
+        "id": "={{ $json.query.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        32,
+        0
+      ],
+      "id": "23c4d86a-6f64-4cd6-bbd1-f612e849612e",
+      "name": "Get Record from Video Pipeline",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "GAzy5Pw6gE7xPdbA",
+          "name": "Airtable New"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "base": {
+          "__rl": true,
+          "value": "appJKpg6FAG7tOM9C",
+          "mode": "list",
+          "cachedResultName": "Video Content Engine",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgy6pis5SBWsWCc",
+          "mode": "list",
+          "cachedResultName": "Scripts",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C/tblgy6pis5SBWsWCc"
+        },
+        "id": "={{ $json.Scripts[0] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3ce964c8-e737-42bb-8409-fd73592d3d17",
+      "name": "Get Record from Scripts",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "GAzy5Pw6gE7xPdbA",
+          "name": "Airtable New"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert at creating detailed image generation prompts for AI that produce professional, photorealistic content.\n\nAnalyze the following and create an image generation prompt:\n\nSCRIPT TEXT (German): {{ $('Get Record from Video Pipeline').item.json['Script German'] }}\nSCRIPT TEXT (English): {{ $('Get Record from Video Pipeline').item.json['Script English'] }}\nSCENE DURATION: 6 seconds\n\nREFERENCE IMAGE 1:{{ $json.images[0].file }}\nREFERENCE IMAGE 2:{{ $json.images[1].file }}\nREFERENCE IMAGE 3:{{ $json.images[2].file }}\n\nDELIVERABLE TYPE: {{ $('Get Record from Scripts').item.json.Type }}\nPLATFORM: {{ $('Get Record from Scripts').item.json.Platform }}\n\nYour task:\n1. Analyze what's happening in this scene (from script text)\n2. Analyze each reference image:\n   - What product/object is shown?\n   - What person/model is shown?\n   - What style/setting/mood is shown?\n3. Combine ALL elements into ONE cohesive image prompt\n4. Make it photorealistic and professional-looking\n5. Include technical photography specs:\n   - Camera angle (eye-level, low-angle, overhead, etc.)\n   - Lens (50mm portrait, 24mm wide, 85mm, etc.)\n   - Lighting (natural light, studio lighting, golden hour, etc.)\n   - Color grading (warm tones, cool tones, vibrant, muted, etc.)\n   - Depth of field\n6. Match aspect ratio to platform:\n   - Meta/TikTok: Vertical 4:5\n   - YouTube: Horizontal 16:9\n   - LinkedIn/Instagram: Square 1:1\n7. Keep prompt under 80 words\n8. Focus on visual elements only (no text/dialogue)\n\nReturn ONLY the image generation prompt, nothing else.\nNo preamble, no explanation, just the prompt.\n\nExample good prompt:\n\"Professional beauty product photography, elegant woman applying luxury face cream, soft studio lighting, 50mm lens, shallow depth of field, warm beige tones, minimalist spa setting, marble countertop, cream jar in foreground sharp focus, woman's face slightly blurred background, high-end commercial aesthetic, photorealistic, 4:5 vertical composition\"",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        608,
+        0
+      ],
+      "id": "c56cf549-ed41-414a-92a8-f6979fc2cd61",
+      "name": "Create Prompt for Image Generation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fal.run/fal-ai/flux-pro/v1.1-ultra",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": \"{{ $json.output }}\",\n  \"image_size\": {\n    \"width\": 1080,\n    \"height\": 1350\n  },\n  \"num_inference_steps\": 28,\n  \"guidance_scale\": 3.5,\n  \"num_images\": 1,\n  \"enable_safety_checker\": true,\n  \"safety_tolerance\": \"2\",\n  \"output_format\": \"jpeg\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        928,
+        0
+      ],
+      "id": "b8f2887b-d39c-4f86-a16d-805cbce06877",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Record from Video Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create Prompt for Image Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Create Prompt for Image Generation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Record from Video Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Get Record from Scripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Record from Scripts": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Prompt for Image Generation": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "81c161b3-a28e-440b-94a5-3a13d3508b34",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d7b121ca890657f2ce14bd9524c52735b29a704a156d4e35b8bb60bdb9ac2721"
+  },
+  "id": "7ZM1zB38_L1JVkLCUutNa",
+  "tags": [
+    {
+      "updatedAt": "2026-01-23T20:31:46.742Z",
+      "createdAt": "2026-01-23T20:31:46.742Z",
+      "id": "BqojYlAlKFE7VP9l",
+      "name": "Content Automation"
+    }
+  ]
+}

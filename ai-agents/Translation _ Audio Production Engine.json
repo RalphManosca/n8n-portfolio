@@ -1,0 +1,996 @@
+{
+  "name": "Translation / Audio Production Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appJKpg6FAG7tOM9C",
+          "mode": "list",
+          "cachedResultName": "Video Content Engine",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblBZ8XpleREAZaB1",
+          "mode": "list",
+          "cachedResultName": "Video_Pipeline",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C/tblBZ8XpleREAZaB1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Scripts": "={{ [$('Psuedo Loop').first().json.record_id] }}",
+            "Script English": "={{ $json.sentence_english }}",
+            "Display Name": "={{ $json.id }}",
+            "Voice Over URLs": "={{ $json.all_audio_urls }}",
+            "Script German": "={{ $json.sentence }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Display Name",
+              "displayName": "Display Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Scripts",
+              "displayName": "Scripts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Script English",
+              "displayName": "Script English",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Script German",
+              "displayName": "Script German",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Voice Over URLs",
+              "displayName": "Voice Over URLs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reference Images",
+              "displayName": "Reference Images",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Start Image Generation",
+              "displayName": "Start Image Generation",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2032,
+        1872
+      ],
+      "id": "213708f3-4fe0-4988-bc38-6040cb6e64c5",
+      "name": "Create a record",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "notesInFlow": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "GAzy5Pw6gE7xPdbA",
+          "name": "Airtable New"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node - Split Script into Sentences\n\n// Get the input data\nconst inputData = $input.first().json['Scripts in German'];\n\n// Function to split text into sentences\nfunction splitIntoSentences(text) {\n  // Sentence splitting - handles common abbreviations and patterns\n  const sentences = text\n    .replace(/([.!?])\\s+/g, '$1|SPLIT|') // Mark sentence boundaries\n    .replace(/([.!?])$/g, '$1|SPLIT|') // Handle end of text\n    .split('|SPLIT|')\n    .map(s => s.trim())\n    .filter(s => s.length > 0); // Remove empty strings\n  \n  return sentences;\n}\n\n// Function to generate a unique ID\nfunction generateId(index) {\n  return `position_${index + 1}`;\n}\n\n// Process the first item in the input\nconst scriptText = inputData;\n\nif (!scriptText) {\n  return [{\n    json: {\n      error: 'No \"Scripts in German\" field found'\n    }\n  }];\n}\n\n// Split the script into sentences\nconst sentences = splitIntoSentences(scriptText);\n\n// Return array of items, each with a sentence object\nreturn sentences.map((sentence, index) => ({\n  json: {\n    id: generateId(index),\n    sentence: sentence\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2688,
+        1408
+      ],
+      "id": "796e3e98-2aa5-4113-a779-0ebb5cf196d6",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "168aeb80-b61b-4d59-94a8-04788279c9cd",
+              "name": "error",
+              "value": "AI agent failed to translate",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2688,
+        2272
+      ],
+      "id": "481773a6-2b29-4332-8fa5-d440f3d4cbb6",
+      "name": "Set Error for AI Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1e32fdb4-1399-4d80-b525-329cbf7adca8",
+              "name": "error",
+              "value": "Error in creating an Airtable record",
+              "type": "string"
+            },
+            {
+              "id": "c3c23206-ae7d-4675-ade8-742c6caf2457",
+              "name": "message",
+              "value": "={{ $json.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "7ed97030-ad18-4766-9aad-bc83a08bb524",
+              "name": "description",
+              "value": "={{ $json.error.description }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1840,
+        1888
+      ],
+      "id": "080c41a9-7043-46bd-b431-9ba66ed76c4f",
+      "name": "Set Error for Create Airtable Record Failure"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c5954da7-9471-4140-89e4-5a4c61e347ed",
+              "name": "error",
+              "value": "Error in getting Airtable record",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2688,
+        1600
+      ],
+      "id": "a77500f9-879b-4e45-9498-dd0d3d36db7a",
+      "name": "Set Error for Get Airtable Record"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -3024,
+        2288
+      ],
+      "id": "fa3d2e6d-d335-440c-8922-6d513fac0930",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "1TGflKyLhnMETbtC",
+          "name": "Anthropic account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Translate this German script to English:\n\nGERMAN: {{ $json.sentence }}\n\nRequirements:\n- Natural, conversational English\n- Preserve tone and meaning\n- Suitable for voiceover narration\n- Keep it concise and clear\n\nReturn ONLY the English translation, nothing else.",
+        "options": {
+          "systemMessage": "# German Translation Agent System Prompt\n\nYou are a professional German-to-English translation agent integrated into an n8n workflow. Your sole purpose is to translate German text into English with absolute fidelity.\n\n## CRITICAL RULE: EXACT TRANSLATION ONLY\n\n**NEVER add, remove, modify, or interpret beyond what is explicitly stated in the German text.**\n\n## Your Task\n\nTranslate the provided German sentence(s) into English following these strict guidelines:\n\n### Translation Principles\n- Translate every word and element present in the German text\n- Do not add explanations, clarifications, context, or interpretations\n- Do not omit any words, phrases, or punctuation\n- Do not simplify or paraphrase - translate as literally as possible while maintaining English grammar\n- Preserve the exact sentence structure when grammatically possible in English\n- Maintain the formality level of the original text (formal/informal)\n- Keep proper nouns, brand names, and technical terms exactly as they appear\n\n### Output Format\n- Return ONLY the translated English text\n- Do not include explanations, notes, preambles, or the original German text\n- Do not add phrases like \"Translation:\" or \"The translation is:\"\n- Maintain the exact same paragraph structure, line breaks, and punctuation\n- If there are multiple sentences, translate each one without combining or splitting them\n\n### Forbidden Actions\n- ❌ Do NOT add clarifying information (even in parentheses)\n- ❌ Do NOT add context that isn't in the original\n- ❌ Do NOT explain cultural references\n- ❌ Do NOT summarize or condense\n- ❌ Do NOT expand or elaborate\n- ❌ Do NOT convert measurements, dates, or numbers unless the German text explicitly requests it\n- ❌ Do NOT interpret ambiguous text - translate exactly what is written\n\n### Required Actions\n- ✓ Translate every single word\n- ✓ Preserve all punctuation marks\n- ✓ Keep the same number of sentences\n- ✓ Maintain the original meaning without embellishment\n\nIf the input text is not in German or appears to already be in English, return the original text unchanged."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -3024,
+        2080
+      ],
+      "id": "421fe592-03dc-4f56-9668-cbed9b47a95b",
+      "name": "Claude Translator DE to EN",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create 3 items for TTS processing\nconst items = [];\nconst sentence = $input.first().json.sentence;\nconst sentenceId = $input.first().json.id;\n\nfor (let i = 1; i <= 3; i++) {\n  let rate = 1.0;\n  \n  switch(i) {\n    case 2:\n      rate = 0.95;\n      break;\n    case 3:\n      rate = 1.05;\n      break;\n  }\n  \n  items.push({\n    json: {\n      id: sentenceId,\n      sentence: sentence,\n      sample_number: i,\n      filename: `scene_${sentenceId}_voiceover_v${i}`,\n      speaking_rate: rate\n    }\n  });\n}\n\nconst loopData = $('Loop for Sentences').first().json\n\nreturn [{\n  items,\n  id: loopData.id,\n  sentence: loopData.sentence,\n  record_id: $('Get Script').first().json.id\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2224,
+        1616
+      ],
+      "id": "aff9a76d-51e0-4f5e-a6f9-92500c726ec7",
+      "name": "Make 1 item into 3 for TTS Sampling"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2464,
+        2064
+      ],
+      "id": "aad7cf17-dafc-4420-b597-fa8192a29c63",
+      "name": "Loop for TTS"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2464,
+        1408
+      ],
+      "id": "1a6257a6-80e0-46cd-9e70-3c793cdf813d",
+      "name": "Loop for Sentences"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "={{ Object.keys($binary)[0] }}",
+        "name": "={{ $('Loop for TTS').item.json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "root",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1840,
+        2080
+      ],
+      "id": "4d0eea4d-73f9-41dd-ba33-def2374c5d3a",
+      "name": "Upload Voice Over",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SXe0fkK6vUoT7cI2",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/2EiwWnXFnvU5JabPnv8n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "xi-api-key",
+              "value": "sk_8e8cc35abe6b6994ba3ed9f8611ccf37998acc3e071658ce"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.sentence }}\",\n  \"model_id\": \"eleven_flash_v2\",\n  \"voice_settings\": {\n    \"stability\": 0.5,\n    \"similarity_boost\": 0.5\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "={{ $json.filename }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2032,
+        2272
+      ],
+      "id": "32a344e9-4648-47aa-976c-0ceb3e2e603c",
+      "name": "ElevenLabs TTS",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\n\nconst urls = [];\n\nfor (const item of allItems) {\n  if (item.json.webViewLink) {\n    urls.push(item.json.webViewLink);\n  } else if (item.json.webContentLink) {\n    urls.push(item.json.webContentLink);\n  }\n}\n\nconst loopData = $('Psuedo Loop').first().json;\nconst translatedData = $('Claude Translator DE to EN').first().json;\n\nreturn [{\n  id: loopData.id,\n  sentence: loopData.sentence,\n  all_audio_urls: urls.join(', '),\n  sentence_english: translatedData.output\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2224,
+        1872
+      ],
+      "id": "f4915f50-3327-4cd3-8475-5b5a84351ca7",
+      "name": "Format URLs for Airtable"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "id"
+            },
+            {
+              "name": "sentence"
+            },
+            {
+              "name": "record_id"
+            },
+            {
+              "name": "items",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3168,
+        2080
+      ],
+      "id": "ddce1c7a-8748-48ff-85f5-b9d1cf1426e3",
+      "name": "Psuedo Loop"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "base": {
+          "__rl": true,
+          "value": "appJKpg6FAG7tOM9C",
+          "mode": "list",
+          "cachedResultName": "Video Content Engine",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgy6pis5SBWsWCc",
+          "mode": "list",
+          "cachedResultName": "Scripts",
+          "cachedResultUrl": "https://airtable.com/appJKpg6FAG7tOM9C/tblgy6pis5SBWsWCc"
+        },
+        "id": "={{ $json.query.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -2912,
+        1424
+      ],
+      "id": "99bbec85-e70f-4957-aedb-c311213cca56",
+      "name": "Get Script",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "GAzy5Pw6gE7xPdbA",
+          "name": "Airtable New"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "path": "6376e074-9882-4ae8-8abc-0a6b33144821",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2464,
+        1248
+      ],
+      "id": "91b75831-dbe1-4fa9-a715-e0ecd9382331",
+      "name": "Webhook",
+      "webhookId": "6376e074-9882-4ae8-8abc-0a6b33144821"
+    },
+    {
+      "parameters": {
+        "path": "bd318758-be79-4937-882d-39cb8cb84212",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3072,
+        1424
+      ],
+      "id": "99fb75e0-dfdc-4202-907b-7d8ca7f33cb9",
+      "name": "Trigger Production in Airtable",
+      "webhookId": "bd318758-be79-4937-882d-39cb8cb84212"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Psuedo Loop').first().json.items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2688,
+        2064
+      ],
+      "id": "1e25e8b4-c90d-48f0-a6d1-0d18625fc79c",
+      "name": "Throw Out Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize?key=AIzaSyC4ODemX3BdyoxjIomjTNCh6kv68OBLHk4",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "input.text",
+              "value": "={{ $json.sentence }}"
+            },
+            {
+              "name": "voice.languageCode",
+              "value": "de-DE"
+            },
+            {
+              "name": "voice.name",
+              "value": "de-DE-Neural2-B"
+            },
+            {
+              "name": "voice.ssmlGender",
+              "value": "MALE"
+            },
+            {
+              "name": "audioConfig.audioEncoding",
+              "value": "MP3"
+            },
+            {
+              "name": "audioConfig.speakingRate",
+              "value": "={{ $json.speaking_rate }}"
+            },
+            {
+              "name": "audioConfig.pitch",
+              "value": "0.0"
+            },
+            {
+              "name": "audioConfig.volumeGainDb",
+              "value": "0.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2224,
+        2080
+      ],
+      "id": "78f06c7c-8d1f-47d5-bffd-71a2c980cd1d",
+      "name": "Google TTS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3e529f8c-31c7-48b0-9c6e-2b2a3978ffcd",
+              "name": "id",
+              "value": "position_0002",
+              "type": "string"
+            },
+            {
+              "id": "cf76cf98-48a8-4cbc-8bdf-bc64fd9404c3",
+              "name": "sentence",
+              "value": "Then you're not producing enough good creatives!",
+              "type": "string"
+            },
+            {
+              "id": "6e11e7e3-61c3-47f8-b918-ecb4ee433b85",
+              "name": "sample_number",
+              "value": "1",
+              "type": "string"
+            },
+            {
+              "id": "9246858b-e8e6-4f75-916f-7424723e3e82",
+              "name": "filename",
+              "value": "position_0002_sample_1",
+              "type": "string"
+            },
+            {
+              "id": "4520d838-b82f-474e-bf4c-98414c404cbf",
+              "name": "speaking_rate",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "4d4454f7-df00-423a-bca5-92a4a8ffb534",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        2272
+      ],
+      "id": "40edf5c7-5b4b-440a-871f-aaa5b3b98380",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "audioContent",
+        "binaryPropertyName": "={{ $('Loop for TTS').item.json.filename }}",
+        "options": {
+          "fileName": "={{ $('Loop for TTS').item.json.filename }}",
+          "mimeType": "audio/mpeg"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -2032,
+        2080
+      ],
+      "id": "020887bb-b7e1-4cc6-935c-67895a146188",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "WKPn9rYLSloYvwwlEedpY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/WKPn9rYLSloYvwwlEedpY",
+          "cachedResultName": "Translation / Audio Production Engine"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -2032,
+        1616
+      ],
+      "id": "7dd2bbc2-c262-4492-9727-a1a6d4818fe1",
+      "name": "Call Psuedo Loop"
+    },
+    {
+      "parameters": {
+        "content": "## TODO's\n1. Calculation for costing\n2. Folder organization of files",
+        "height": 112
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2640,
+        1872
+      ],
+      "id": "a18b69d2-47ac-448e-b9d3-f86b4dc66bae",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "spaceId": "spaces/AAQAJ7ayHmI",
+        "messageUi": {
+          "text": "=🎙️ VoiceOver Generated\n\nDeliverable: {{ $json.fields.Scripts[0] }}\nScene: {{ $json.fields[\"Display Name\"] }} - {{ $json.fields[\"Script English\"] }}\n\nVariations: 3\nCost: €0.06\nScene total cost: €{AI_Cost_Total}\n\nCreative Director: Please select best voiceover.\nairtable.com/appJKpg6FAG7tOM9C/tblBZ8XpleREAZaB1/{{ $json.id }}"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.googleChat",
+      "typeVersion": 1,
+      "position": [
+        -2224,
+        1392
+      ],
+      "id": "90ea4b7d-9de4-4d3d-a956-0f6f692ce44b",
+      "name": "Send Success Notification",
+      "webhookId": "bf02e2f4-6c79-4bac-9b33-ad654acdbde6",
+      "credentials": {
+        "googleApi": {
+          "id": "PaPk0o3t4eCxuUuY",
+          "name": "Google Chat"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "writer",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1600,
+        2064
+      ],
+      "id": "5c9f670e-c322-4596-9aee-e24d14435c3d",
+      "name": "Update file to be viewable by everyone right away",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SXe0fkK6vUoT7cI2",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop for Sentences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Set Error for Create Airtable Record Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Claude Translator DE to EN",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Translator DE to EN": {
+      "main": [
+        [
+          {
+            "node": "Throw Out Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Error for AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make 1 item into 3 for TTS Sampling": {
+      "main": [
+        [
+          {
+            "node": "Call Psuedo Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop for TTS": {
+      "main": [
+        [
+          {
+            "node": "Format URLs for Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop for Sentences": {
+      "main": [
+        [
+          {
+            "node": "Send Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Make 1 item into 3 for TTS Sampling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Voice Over": {
+      "main": [
+        [
+          {
+            "node": "Loop for TTS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update file to be viewable by everyone right away",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs TTS": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Format URLs for Airtable": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Psuedo Loop": {
+      "main": [
+        [
+          {
+            "node": "Claude Translator DE to EN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Script": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Error for Get Airtable Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Production in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Get Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Throw Out Items": {
+      "main": [
+        [
+          {
+            "node": "Loop for TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google TTS": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload Voice Over",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Psuedo Loop": {
+      "main": [
+        [
+          {
+            "node": "Loop for Sentences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update file to be viewable by everyone right away": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "4f0d4c91-20ea-4c47-ac60-dd1d9afe047e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d7b121ca890657f2ce14bd9524c52735b29a704a156d4e35b8bb60bdb9ac2721"
+  },
+  "id": "WKPn9rYLSloYvwwlEedpY",
+  "tags": [
+    {
+      "name": "Content Automation",
+      "id": "BqojYlAlKFE7VP9l",
+      "updatedAt": "2026-01-23T20:31:46.742Z",
+      "createdAt": "2026-01-23T20:31:46.742Z"
+    }
+  ]
+}
