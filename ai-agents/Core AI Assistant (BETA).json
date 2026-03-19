@@ -1,0 +1,1103 @@
+{
+  "name": "Core AI Assistant (BETA)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "*"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -384
+      ],
+      "id": "4d9010fe-e7ba-435c-a7b6-0045357d9dfb",
+      "name": "Telegram Trigger",
+      "webhookId": "01955847-5627-4e26-a75d-21d4fa394549",
+      "credentials": {
+        "telegramApi": {
+          "id": "IrPFExLfrnyOSz2I",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        -640
+      ],
+      "id": "0695f9c4-ad02-422d-91b1-3ff94d4e6843",
+      "name": "Get Voice Recording",
+      "webhookId": "f178a3af-153d-4b07-b327-2f4f45cdf867",
+      "credentials": {
+        "telegramApi": {
+          "id": "IrPFExLfrnyOSz2I",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice.mime_type }}",
+                    "rightValue": "audio/ogg",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9ad32e28-6a12-4107-8578-a521aaf5e10a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ab22c1fc-f6b6-4587-b585-e2af91fabf67",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8d2bbfec-adaa-4d31-8c96-7a3b999de77b",
+                    "leftValue": "={{ $json.message.caption }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        -400
+      ],
+      "id": "aecb9184-8aee-44f4-8b6e-4817001c2c80",
+      "name": "Determine what Type"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1152,
+        -640
+      ],
+      "id": "f4bd08ca-12c8-4ff0-92cb-60c5fc7ee5f1",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "6kvgkghwGp9M6REL",
+          "name": "Open AI Account Bushire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Message: {{ $json.chat }}\nchat_id: {{ $json.chat_id }}\ninputType: {{ $json.inputType }}",
+        "options": {
+          "systemMessage": "=# ARIA - Executive Assistant\n\nYOU ARE STRICTLY A TOOL-CALLING AGENT.\nYOU CANNOT COMPLETE ANY TASK WITHOUT CALLING THE APPROPRIATE TOOL.\nYOU CANNOT CONFIRM, PROCESS, OR COMPLETE ANY BOOKING YOURSELF.\nNEVER FABRICATE RESULTS. NEVER ASSUME A TASK IS DONE.\nA TASK IS ONLY COMPLETE WHEN THE TOOL HAS BEEN CALLED AND RETURNED A REAL RESPONSE.\n\nYou are ARIA, the AI Executive Assistant for Coach Hire Australia.\nYou are intelligent, warm, and professional — like a world-class personal assistant.\nYou are proactive, efficient, and always one step ahead.\n\n## Critical Behavior Rules\n\n- NEVER say \"please hold\", \"still processing\", \"retrieving\", or \"give me a moment\"\n- NEVER ask for details already provided anywhere in the conversation\n- NEVER respond with status updates — call the tool and return the result\n- NEVER engage in small talk during a booking flow\n- NEVER tell the user you are \"processing\" or \"retrieving\" anything\n- NEVER ask for name, email, phone, or passengers if already stated\n- The ONLY acceptable responses during a booking flow are:\n  1. Asking for genuinely missing required fields\n  2. Showing options returned by the Booking Agent EXACTLY as returned\n  3. Confirming the final quote with reference number\n\n## Greeting Behavior\n\nIf greeting contains booking details → extract everything → call Booking: Handle Request immediately\nIf greeting contains NO booking details → respond warmly:\n\"Hello! 👋 I'm ARIA, your AI Executive Assistant for Coach Hire Australia. How can I assist you today?\"\n\nNEVER ask for details already present in the greeting message.\n\n## Smart Detail Extraction\n\nBefore asking for ANYTHING, scan the ENTIRE conversation history for:\n- Name\n- Email (@ symbol)\n- Phone number\n- Passenger count\n- Pickup location and time\n- Dropoff location\n- Return trip or one way\n- Journey purpose\n- Vehicle type preference\n- Luggage type preference\n\nOnly ask for fields that are GENUINELY missing after scanning everything.\n\n## Your Tools\n\n**Gmail:**\n- `Gmail: Search Messages` - Find emails\n- `Gmail: Get Message` - Read a specific email\n- `Gmail: Send Message` - Send an email\n- `Gmail: Create Draft` - Save a draft email\n\n**Calendar:**\n- `Calendar: Get Events` - View upcoming events\n- `Calendar: Create Event` - Schedule a meeting\n- `Calendar: Delete Event` - Cancel an event\n\n**Drive:**\n- `Drive: Upload File` - Save a file to Google Drive\n- `Drive: Delete File` - Remove a file\n- `Drive: Share File` - Share a file\n\n**Telegram:**\n- `Telegram: Get File` - Download a file the user sent\n\n**Booking:**\n- `Booking: Handle Request` - For ANY transport, bus, coach, quote, or passenger request\n- MUST be called immediately when any booking request is detected\n- NEVER respond to a booking request without calling this tool first\n- NEVER confirm a booking without a real response from this tool\n\n## When to Use Each Tool\n\n| User Says | Tool to Use |\n|-----------|-------------|\n| \"check emails\", \"any new emails\" | Gmail: Search Messages → \"is:unread\" |\n| \"emails from John\" | Gmail: Search Messages → \"from:john\" |\n| \"read that email\" | Gmail: Get Message |\n| \"send email to X about Y\" | Gmail: Send Message |\n| \"draft an email\" | Gmail: Create Draft |\n| \"what's on my calendar\" | Calendar: Get Events |\n| \"schedule a meeting\" | Calendar: Create Event |\n| \"cancel the meeting\" | Calendar: Get Events → Calendar: Delete Event |\n| \"save this file\" | Telegram: Get File → Drive: Upload File |\n| any mention of transport, passengers, booking | Booking: Handle Request |\n\n## Response Style\n\nShort, warm, and professional:\n\n✅ \"Sent email to John about the contract.\"\n✅ \"🚐 Quote submitted! Reference: 361592.\"\n✅ \"Hello! 👋 I'm ARIA. How can I help you today?\"\n❌ \"I have successfully completed the task...\"\n❌ \"Your booking is confirmed.\" (without tool response)\n❌ \"Please hold while I retrieve...\"\n❌ Asking for details already provided\n\nEmojis: ✅ done · 📬 email · 📅 calendar · 🚐 booking · ⚠️ info needed\n\n## Voice vs Text Response Style\n\ninputType = \"voice\":\n- Conversational, spoken tone\n- Short natural sentences, no formatting, no emojis, max 3-4 sentences\n\ninputType = \"text\":\n- Normal style with bullet points, emojis, and formatting\n\n## Memory\n\nTrack ALL of the following across the entire conversation:\n- name, email, phone\n- NumberOfPassenger\n- pickupAddress, dropoffAddress, pickupDateTime\n- returnTrip, returnDateTime\n- JourneyType, VehicleType, LuggageType\n- notes\n\nNEVER ask for anything already stored in memory.\n\n## Booking Flow — ARIA's Role as State Manager\n\nARIA is responsible for tracking the booking state across all turns.\nEvery time ARIA calls Booking: Handle Request, it MUST pass ALL\nconfirmed fields collected so far — including fields confirmed in\nprevious turns.\n\n### Strict Sequential Flow:\n\nStep 1: name + email + phone (collect all missing at once)\nStep 2: number of passengers\nStep 3: vehicle type (from Booking Agent options)\nStep 4: luggage type (from Booking Agent bagList)\nStep 5: journey type\nStep 6: submit quote → return reference number\n\nARIA must track which step has been completed and always move to the\nNEXT uncompleted step — never go backwards, never repeat a step.\n\n### When calling Booking: Handle Request, ALWAYS use this format:\n\nBook a trip for [pax] passengers from [pickup] to [dropoff]\non [date] at [time].\nCustomer name: [name].\nEmail: [email].\nPhone: [phone].\nJourney type: [type or 'not yet confirmed'].\nReturn trip: [yes/no]. Return time: [time or 'none - one way'].\nVehicleType: [car_name or 'not yet confirmed'].\nLuggageType: [bag_des or 'not yet confirmed'].\nNotes: [notes or none].\n\n### When Booking Agent returns a question or list:\n- Show it EXACTLY as returned — NEVER summarize or paraphrase\n- Wait for user reply\n- Store the answer in memory\n- Call Booking: Handle Request again with ALL confirmed fields\n\n### When user replies with a number for any selection:\n- Store it immediately\n- Include it in the next Booking: Handle Request call\n- NEVER ask for it again\n\n## Return Trip Handling\n\n- \"no return\", \"one way\", \"no return needed\" → Return trip: no. Return time: none - one way.\n- User gives return time → Return trip: yes. Return time: [time].\n- No mention of return → default to one way — NEVER ask\n\n## Passenger Rules\n\n- NumberOfPassenger = TOTAL passengers for the entire trip\n- NEVER ask \"how many passengers per vehicle\"\n- NEVER ask \"how many passengers in each vehicle\"\n\n## Booking Confirmation Response\n\nWhen quote is successfully submitted:\n\n\"🚐 Quote Successfully Submitted!\n\nYour transport quote has been submitted to Coach Hire Australia\nand is currently being reviewed by our team.\n\n📋 Quote Reference Number: [extRef]\n\nPlease keep your reference number safe — our team will be in touch\nshortly to confirm availability and finalise your booking.\n\nFor any questions or follow-ups:\n📞 1300 565 091\n📧 info@coachhire.com.au\n\nThank you for choosing Coach Hire Australia. We look forward to\ngetting you on the road! ✨\"\n\nWhen quote fails:\n\n\"⚠️ Quote Submission Unsuccessful\n\nUnfortunately we were unable to submit your quote at this time.\n[reason if available]\n\nPlease try again or contact our team:\n📞 1300 565 091\n📧 info@coachhire.com.au\"\n\n## Displaying Booking Agent Responses\n\nWhen Booking: Handle Request returns a question or list:\n- NEVER summarize or paraphrase\n- ALWAYS display EXACTLY as returned\n- ALWAYS show numbered list exactly as provided\n\n## Customer Details for Booking\n\nRequired: name + email (valid format) + phone\n- Scan ENTIRE message history before asking for anything\n- Ask for ALL missing fields in ONE message\n- NEVER ask for a field already provided anywhere in the conversation\n\n## If You Need More Info\n\nAsk ONE short question only:\n- \"Could I get your name, email, and phone number?\"\n- \"How many passengers will be travelling?\"\n- \"What time is the pickup?\"\n\n## Company Info\n\n- **Company:** Coach Hire Australia\n- **Website:** coachhire.com.au\n- **Phone:** 1300 565 091\n- **Email:** info@coachhire.com.au\n\n## What You Cannot Do\n\n- Search the web\n- Make phone calls\n- Edit existing calendar events (only create or delete)\n- Search Google Drive (only upload/delete/share)\n- Confirm a booking without calling Booking: Handle Request first\n- Fabricate tool results or booking confirmations\n- Summarize vehicle, luggage, or journey type options\n- Say \"please hold\", \"still processing\", or any status update\n- Ask for details already provided\n- Ask \"how many passengers per vehicle\"\n- Divide passenger count across vehicles\n\nIf asked about something you cannot do, say so honestly and suggest alternatives."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        -368
+      ],
+      "id": "6f93521e-59df-4252-80bd-68124e39b95f",
+      "name": "Executive Assistant"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        -80
+      ],
+      "id": "c06eac1d-ec53-43ac-a0d7-3cf8f62b620a",
+      "name": "Gmail: Send Message",
+      "webhookId": "3c96c0ac-795b-4071-9f8e-b884749424e8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "xqKG3nJv7zeWPTGE",
+          "name": "Gmail account Exclusivebchire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "exclusivebchire@gmail.com",
+          "mode": "list",
+          "cachedResultName": "exclusivebchire@gmail.com"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        1856,
+        112
+      ],
+      "id": "57c3a204-b3b5-4aa3-aa51-d875f5f30222",
+      "name": "Calendar: Create Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZCa0ok6L99SaXtgC",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+        "simple": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', ``, 'boolean') }}",
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        -80
+      ],
+      "id": "5c9eb789-2e9f-43a8-ab54-bb005ea54533",
+      "name": "Gmail: Get Message",
+      "webhookId": "737f7c0a-bfd4-4b5c-909a-3126c5fc09c7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "xqKG3nJv7zeWPTGE",
+          "name": "Gmail account Exclusivebchire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+        "simple": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', ``, 'boolean') }}",
+        "filters": {
+          "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search', ``, 'string') }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        -80
+      ],
+      "id": "59ff9993-4e86-4168-b434-c89f164e1a5d",
+      "name": "Gmail: Search Messages",
+      "webhookId": "fac68a78-1ca9-4230-a279-c31866d47d10",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "xqKG3nJv7zeWPTGE",
+          "name": "Gmail account Exclusivebchire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        -80
+      ],
+      "id": "39ef4c3c-b9c1-4ea7-b339-756402270051",
+      "name": "Gmail: Create Draft",
+      "webhookId": "a5b04ee0-9b9e-4529-b0a2-da18cba5baa6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QP1FajtvKZsCa0c8",
+          "name": "Gmail account Les"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "exclusivebchire@gmail.com",
+          "mode": "list",
+          "cachedResultName": "exclusivebchire@gmail.com"
+        },
+        "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        112
+      ],
+      "id": "79e3c30f-bcbd-4907-a1eb-a7d8b30ccb35",
+      "name": "Calendar: Get Events",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZCa0ok6L99SaXtgC",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "exclusivebchire@gmail.com",
+          "mode": "list",
+          "cachedResultName": "exclusivebchire@gmail.com"
+        },
+        "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        2176,
+        112
+      ],
+      "id": "e6871ea1-eaae-4287-9198-bdba8dd66fa3",
+      "name": "Calendar: Delete Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZCa0ok6L99SaXtgC",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Input_Data_Field_Name', ``, 'string') }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        1856,
+        304
+      ],
+      "id": "8789f882-be01-43ce-8784-702864d4e96b",
+      "name": "Drive: Upload File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zDmjD2K2M9LIZMni",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('File', ``, 'string') }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        2016,
+        304
+      ],
+      "id": "c518e965-7e0b-4f10-b09f-8f20f4f71dc7",
+      "name": "Drive: Delete File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zDmjD2K2M9LIZMni",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "auto",
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('File', ``, 'string') }}",
+          "mode": "id"
+        },
+        "permissionsUi": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        2176,
+        304
+      ],
+      "id": "827556d9-596f-44a3-8c7b-81162b506b40",
+      "name": "Drive: Share File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zDmjD2K2M9LIZMni",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.video_file_id || $json.photo_file_id || $json.document_file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        1856,
+        480
+      ],
+      "id": "349bc9cd-a28d-466d-8ffd-ae48c4adf908",
+      "name": "Telegram: Get FIle",
+      "webhookId": "3d58ea5c-5dff-4c9e-9a7b-10f480b2691d",
+      "credentials": {
+        "telegramApi": {
+          "id": "IrPFExLfrnyOSz2I",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "call this tool to process a booking ",
+        "workflowId": {
+          "__rl": true,
+          "value": "Tc2mWMyf7ve2jpRh",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Tc2mWMyf7ve2jpRh",
+          "cachedResultName": "Booking Agent (BETA)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('request', ``, 'string') }}",
+            "chat_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('chat_id', ``, 'string') }}",
+            "NumberofPassengers": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('NumberofPassengers', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "NumberofPassengers",
+              "displayName": "NumberofPassengers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        480
+      ],
+      "id": "d18d6351-2743-46aa-b9c1-bc46667cfc56",
+      "name": "Booking: Handle Request"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        -112
+      ],
+      "id": "0532b8d5-cf4b-4cb7-a701-dfd7c8ba68da",
+      "name": "OpenAI GPT-4.1-mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "6kvgkghwGp9M6REL",
+          "name": "Open AI Account Bushire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Set AI Agent Input Text').item.json.chat_id }}",
+        "text": "={{ $json.reply }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2256,
+        -352
+      ],
+      "id": "30e2c350-5690-4936-821f-096b626bacef",
+      "name": "Send a text message",
+      "webhookId": "d0f54c45-8e2b-4bb0-aa95-d900b755f413",
+      "credentials": {
+        "telegramApi": {
+          "id": "IrPFExLfrnyOSz2I",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAudio",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2384,
+        -640
+      ],
+      "id": "dc8a3a9a-ad64-4822-bee9-e20ccd7088af",
+      "name": "Send an audio file",
+      "webhookId": "e94b1c7e-22cb-4ad5-8240-4b7e1ce5ebfc",
+      "credentials": {
+        "telegramApi": {
+          "id": "IrPFExLfrnyOSz2I",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c833126e-8236-4297-bd39-2e7e93d2d40d",
+              "leftValue": "={{ $json.inputType }}",
+              "rightValue": "=voice",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2016,
+        -368
+      ],
+      "id": "61f109a0-8fec-4f83-893f-3349dc42566c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "input": "={{ $json.reply }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2208,
+        -640
+      ],
+      "id": "304b6b20-8466-4f22-a5b0-8dea89e5239d",
+      "name": "Generate audio",
+      "credentials": {
+        "openAiApi": {
+          "id": "6kvgkghwGp9M6REL",
+          "name": "Open AI Account Bushire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2b812af-5748-4816-9423-ae2089d4bfaf",
+              "name": "chat",
+              "value": "={{ $json.message.text || $json.message.caption }}",
+              "type": "string"
+            },
+            {
+              "id": "943a4ace-0b1e-4d86-8764-d2409539e4b7",
+              "name": "video_file_id",
+              "value": "={{ $json.message.video.thumbnail.file_id }}",
+              "type": "string"
+            },
+            {
+              "id": "05d2f380-1a0f-4347-8c4d-2b334eb9024c",
+              "name": "photo_file_id",
+              "value": "={{ $json.message.photo[0].file_id  }}",
+              "type": "string"
+            },
+            {
+              "id": "ac1cddc2-1f49-44dd-a8e5-5e565a38a7cf",
+              "name": "document_file_id",
+              "value": "={{ $json.message.document.file_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9a8ef7c6-dbfa-4664-9af2-40a2b32054b2",
+              "name": "transcribed",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "b1cf641a-edd1-4f9f-ba0a-e6027f30234f",
+              "name": "chat_id",
+              "value": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        -368
+      ],
+      "id": "19e6b6cb-0625-4b91-a29f-7553e58425a4",
+      "name": "Set AI Agent Input Text"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2b812af-5748-4816-9423-ae2089d4bfaf",
+              "name": "chat",
+              "value": "={{ $json.message.text || $json.message.caption }}",
+              "type": "string"
+            },
+            {
+              "id": "943a4ace-0b1e-4d86-8764-d2409539e4b7",
+              "name": "video_file_id",
+              "value": "={{ $json.message.video.thumbnail.file_id }}",
+              "type": "string"
+            },
+            {
+              "id": "05d2f380-1a0f-4347-8c4d-2b334eb9024c",
+              "name": "photo_file_id",
+              "value": "={{ $json.message.photo[0].file_id  }}",
+              "type": "string"
+            },
+            {
+              "id": "ac1cddc2-1f49-44dd-a8e5-5e565a38a7cf",
+              "name": "document_file_id",
+              "value": "={{ $json.message.document.file_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9a8ef7c6-dbfa-4664-9af2-40a2b32054b2",
+              "name": "transcribed",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "b1cf641a-edd1-4f9f-ba0a-e6027f30234f",
+              "name": "chat_id",
+              "value": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "6f7cd670-8598-445a-a54c-b9f51d4f7f8f",
+              "name": "inputType",
+              "value": "={{ $('Transcribe a recording').item.json.text ? \"voice\" : \"text\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        -640
+      ],
+      "id": "6dce800e-d003-4d9b-89b3-f530abfc1e41",
+      "name": "Set AI Agent Input Voice"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0bedba0-9694-41f7-b7a6-03efce7e19bd",
+              "name": "=reply",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "783957f2-b86f-4da1-80ad-6f35aaa4cc23",
+              "name": "inputType",
+              "value": "={{ $('Set AI Agent Input Voice').isExecuted ? \"voice\" : \"text\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1808,
+        -368
+      ],
+      "id": "dbb8d34c-d801-439a-8de3-b7c6ac38a280",
+      "name": "Set Voice or Text"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        -112
+      ],
+      "id": "57435618-557b-424b-8736-2c3dec88c806",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Determine what Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine what Type": {
+      "main": [
+        [
+          {
+            "node": "Get Voice Recording",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set AI Agent Input Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set AI Agent Input Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice Recording": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Set AI Agent Input Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Send Message": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Create Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Get Message": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Search Messages": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Create Draft": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Get Events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Delete Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload File": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Delete File": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Share File": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Get FIle": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking: Handle Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executive Assistant": {
+      "main": [
+        [
+          {
+            "node": "Set Voice or Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4.1-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Generate audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate audio": {
+      "main": [
+        [
+          {
+            "node": "Send an audio file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set AI Agent Input Text": {
+      "main": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set AI Agent Input Voice": {
+      "main": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Voice or Text": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Executive Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e3594d71-fd17-4b0b-973f-d1574adb4479",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "813a5025ca13a784e42b410f96e5c01a74bd02215b7e46a00639a08dbf47ff41"
+  },
+  "id": "5JdvzdU5LfxsF5TM",
+  "tags": []
+}

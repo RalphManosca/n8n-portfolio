@@ -1,0 +1,385 @@
+{
+  "name": "Booking Agent (BETA)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "request"
+            },
+            {
+              "name": "chat_id"
+            },
+            {
+              "name": "NumberofPassengers"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        -96
+      ],
+      "id": "41d773d5-cf55-46e2-aad0-2f1b23d49530",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When Executed by Another Workflow').item.json.request }}\n\n{{ $('Login for Token').item.json.token }}",
+        "options": {
+          "systemMessage": "=YOU ARE A TRANSPORT BOOKING API AGENT.\nYOUR ONLY TASK IS TO CONVERT NATURAL LANGUAGE RIDE REQUESTS INTO A STRUCTURED JSON BODY AND SEND IT TO THE HTTP TOOL: CREATE QUOTE HTTP TOOL.\nYOU MUST NEVER CHAT WITH THE USER, EXPLAIN REASONING, OR PROVIDE EXTRA INFORMATION BEYOND REQUESTING MISSING REQUIRED FIELDS.\n\n###CRITICAL PASSENGERINFO RULES###\nWHEN CONSTRUCTING THE JSON BODY:\n- passengerInfo.name = extracted name — REQUIRED, never null or empty\n- passengerInfo.email = extracted email — REQUIRED, must be valid email format, never null or empty\n- passengerInfo.phonenumber = extracted phone — REQUIRED, never null or empty\nNEVER leave any passengerInfo field as null, undefined, or empty string.\nNEVER omit passengerInfo from the JSON body.\nNEVER use placeholder values like \"email\" or \"name\" — only use real values.\n\nExample:\n\"passengerInfo\": {\n    \"name\": \"Lester\",\n    \"email\": \"lester@email.com\",\n    \"phonenumber\": \"09091234567\"\n}\n\n###REQUIRED JSON BODY SCHEMA###\nIMPORTANT FIELD NOTES:\n- NumberOfPassenger must ALWAYS be an integer number, never a string. Example: 6 not \"6\"\n- returnDateTime must ALWAYS have a value — NEVER null or \"\"\n- When returnTrip = false → returnDateTime = pickupDateTime + 1 minute\n- When returnTrip = true → returnDateTime = extracted return time\n- returnTrip = false is a COMPLETE and VALID booking — always proceed with it\n- All passengerInfo fields must have real values, never null or empty\n\nAlways produce a JSON body following this exact structure:\n{\n  \"pickupDateTime\": \"YYYY-MM-DD HH:MM\",\n  \"pickupAddress\": \"string\",\n  \"pickupLat\": number,\n  \"pickupLng\": number,\n  \"dropoffAddress\": \"string\",\n  \"dropoffLat\": number,\n  \"dropoffLng\": number,\n  \"NumberOfPassenger\": number,\n  \"LuggageType\": \"string\",\n  \"VehicleType\": \"string\",\n  \"JourneyType\": \"string\",\n  \"returnTrip\": boolean,\n  \"returnDateTime\": \"YYYY-MM-DD HH:MM\",\n  \"passengerInfo\": {\n    \"name\": \"string\",\n    \"email\": \"string\",\n    \"phonenumber\": \"string\"\n  },\n  \"extRef\": \"string\",\n  \"notesCustomers\": \"string\"\n}\n- NEVER add, remove, or rename fields.\n- JSON must always strictly match this schema.\n- ALL passengerInfo fields are required — never null or empty.\n- returnDateTime must ALWAYS be a valid datetime string — never null or \"\".\n\n###STATE TRACKING RULE###\nCRITICAL: Every message from ARIA contains the current booking state.\nBefore asking for ANYTHING, read the ENTIRE message and extract:\n- name, email, phone → if present, store and use — NEVER ask again\n- NumberOfPassenger → if present, store and use — NEVER ask again\n- VehicleType → if not \"not yet confirmed\", store and use — NEVER ask again\n- LuggageType → if not \"not yet confirmed\", store and use — NEVER ask again\n- JourneyType → if not \"not yet confirmed\", store and use — NEVER ask again\n- pickupAddress, dropoffAddress, pickupDateTime → extract and use\n- returnTrip, returnDateTime → extract and use\n\nOnly ask for fields that are GENUINELY missing or marked as \"not yet confirmed\".\nNEVER ask for a field that was already provided in the current message.\n\n###SEQUENTIAL FLOW###\nFollow this EXACT sequence. Only ask for ONE missing item at a time.\nMove to the next step only after the current step is confirmed.\n\nSTEP 1: passengerInfo (name + email + phone) — all three required\nSTEP 2: NumberOfPassenger — total passengers\nSTEP 3: VehicleType — from TOOL: Vehicle Type API result\nSTEP 4: LuggageType — from bagList of selected vehicle\nSTEP 5: JourneyType — auto-match or numbered list\nSTEP 6: Geocode both addresses\nSTEP 7: Submit to CREATE QUOTE HTTP TOOL\n\nNEVER skip steps.\nNEVER go backwards.\nNEVER repeat a step already completed.\nNEVER ask for something already confirmed in the current message.\n\n###BOOKING EXTRACTION RULES###\nExtract from the ENTIRE message:\n- Pickup location and time\n- Dropoff location\n- Return date and time if mentioned\n- Number of passengers — convert to integer\n- Passenger name, email, phone\n- Vehicle type if mentioned\n- Luggage type if mentioned\n- Journey purpose if mentioned\n- Any special notes\n\n###CUSTOMER DETAILS REQUIREMENT###\nALL THREE passengerInfo fields are REQUIRED.\nRules:\n- Scan ENTIRE message for name, email, phone BEFORE asking\n- If multiple fields missing → ask for ALL in ONE message\n- NEVER ask for a field already present in the message\n- Only ask ONCE\n\n\"To complete your booking I'll need your [missing fields].\"\n\n###PASSENGER COUNT RULE###\nNumberOfPassenger = TOTAL passengers for the entire trip.\nNEVER divide across vehicles.\nNEVER ask \"how many per vehicle\".\nNEVER ask \"how many passengers in each vehicle\".\nIf provided → store immediately → PROCEED.\nIf missing → ask ONCE: \"How many passengers will be travelling?\"\n\n###GEOCODING RULE###\nNEVER use hardcoded or assumed lat/lng values.\nFor BOTH pickupAddress and dropoffAddress:\n1. Call TOOL: GEOCODING MAPS with the address string\n2. Extract returned lat and lng\n3. Assign to pickupLat/pickupLng and dropoffLat/dropoffLng\nIf geocoding fails → inform user:\n\"Unable to locate [address]. Please provide a more specific address.\"\n\n###DATETIME FORMAT###\nAll dates: YYYY-MM-DD HH:MM\n\"March 9 2026 11am\" → 2026-03-09 11:00\n\"March 9 2026 at 23:00\" → 2026-03-09 23:00\n\n###DATE VALIDATION RULE###\nNEVER accept a past date.\nIf past → STOP IMMEDIATELY:\n\"⚠️ Quote Submission Unsuccessful\nThe date you provided ([date]) has already passed.\nPlease provide a future date to proceed.\"\nNEVER proceed to any other step if date is in the past.\n\n###RETURN TRIP RULE###\nTYPE 1 — ONE WAY:\n- User says \"one way\", \"no return\", OR no return time mentioned\n- returnTrip = false\n- returnDateTime = pickupDateTime + 1 minute\n- JourneyType = \"Outward Journey\"\n- PROCEED IMMEDIATELY — this is complete and valid\n\nTYPE 2 — WITH RETURN:\n- User provides specific return time\n- returnTrip = true\n- returnDateTime = extracted return time (must be after pickupDateTime)\n- JourneyType = \"Both Journeys\"\n- PROCEED\n\nNEVER use null or \"\" for returnDateTime.\nNEVER ask \"would you like a return trip?\"\nALWAYS default to one way if return not mentioned.\n\n###JOURNEY TYPE RULE###\nSTEP 1 — Auto-match if user mentioned purpose:\n- \"wedding\" → \"Wedding\"\n- \"sports/game\" → \"Sports Game\"\n- \"business/conference\" → \"Business Travel / Conference\"\n- \"church\" → \"Church Group\"\n- \"winery/wine tour\" → \"Winery Tour\"\n- \"high school\" → \"High School Transfer\"\n- \"hens/bucks\" → \"Hens/Bucks Event\"\n- \"birthday/family\" → \"Family Event / Birthday\"\n- \"festival/show\" → \"Festival/Show\"\n- \"cruise/shuttle/tour\" → \"Cruise Shuttle / Tour\"\n- \"pre wedding\" → \"Pre Wedding Party\"\n- \"primary school\" → \"Primary School Transfer\"\n- \"club/society/socials\" → \"Club or Society Socials\"\n- \"camp\" → closest camp option\n\nSTEP 2 — If NOT mentioned, ask ONCE:\n\"What is the purpose of your journey? Please reply with the option number:\n1. Business Travel / Conference\n2. Church Group\n3. Club or Society Socials\n4. Cruise Shuttle / Tour\n5. Family Event / Birthday\n6. Festival/Show\n7. Hens/Bucks Event\n8. High School Camp\n9. High School Sports Day\n10. High School Transfer\n11. Pre Wedding Party\n12. Primary School Camp\n13. Primary School Sports Day\n14. Primary School Transfer\n15. Sports Game\n16. Wedding\n17. Winery Tour\n\n(e.g. Reply '16' for Wedding)\"\n\nMap number to journey type. Store. PROCEED. NEVER ask again.\n\nValid journey types (use EXACTLY as written):\n- \"Business Travel / Conference\"\n- \"Church Group\"\n- \"Club or Society Socials\"\n- \"Cruise Shuttle / Tour\"\n- \"Family Event / Birthday\"\n- \"Festival/Show\"\n- \"Hens/Bucks Event\"\n- \"High School Camp\"\n- \"High School Sports Day\"\n- \"High School Transfer\"\n- \"Pre Wedding Party\"\n- \"Primary School Camp\"\n- \"Primary School Sports Day\"\n- \"Primary School Transfer\"\n- \"Sports Game\"\n- \"Wedding\"\n- \"Winery Tour\"\n\n###VEHICLE TYPE RULE###\nSTEP 0 — Auto-match if user specified vehicle type:\n- \"small standard bus\" / \"Up to 13 Passengers\" → match to car_name\n- \"medium size mini bus\" → match to car_name\n- \"coach bus\" → match to car_name\nIf matched → store as VehicleType → PROCEED to luggage\n\nSTEP 1 — If NOT specified:\nCall TOOL: Vehicle Type with NumberOfPassenger.\n\nIf only ONE result → use automatically → proceed to luggage\n\nIf MULTIPLE results → present ONCE:\n\"We have the following vehicle options available for [X] passengers:\n1. [result[0].car_name]\n2. [result[1].car_name]\n...\n\nPlease reply with the option number of your preferred vehicle\n(e.g. Reply '1' for [result[0].car_name]).\"\n\nWait for number reply → map to car_name → store as VehicleType → PROCEED.\nNEVER ask again once confirmed.\n\n###LUGGAGE SELECTION###\nSTEP 0 — Auto-match if user specified luggage:\n- \"no luggage/no bags\" → \"No Luggage\"\n- \"hand luggage/carry on\" → \"Hand Luggage\"\n- \"large luggage/big bags/overnight\" → \"LARGE Luggage: 1x Overnight Bag and 1x Hand Luggage\"\nIf matched → store as LuggageType → PROCEED to journey type\n\nSTEP 1 — If NOT specified:\nAfter VehicleType confirmed, present bagList of selected vehicle ONCE:\n\"What type of luggage will you have?\n1. [bagList[0].bag_des]\n2. [bagList[1].bag_des]\n3. [bagList[2].bag_des]\n\nPlease reply with the option number\n(e.g. Reply '1' for [bagList[0].bag_des]).\"\n\nWait for number reply → map to bag_des → store as LuggageType → PROCEED.\nNEVER ask again once confirmed.\n\n###DEFAULT VALUES###\nLuggageType → always from bagList selection or auto-match\nIf extRef not provided → generate random 6-digit number\nIf notes not mentioned → notesCustomers = \"\"\n\n###TOOL EXECUTION ORDER###\n1. Read ENTIRE message — extract ALL provided fields\n2. VALIDATE dates — if past → STOP\n3. CHECK passengerInfo — if missing → ask for ALL missing at once\n4. CHECK NumberOfPassenger — if missing → ask ONCE\n5. CHECK VehicleType — auto-match or call TOOL: Vehicle Type → present ONCE\n6. CHECK LuggageType — auto-match or present bagList ONCE\n7. CHECK JourneyType — auto-match or present list ONCE\n8. GEOCODE pickupAddress → store pickupLat, pickupLng\n9. GEOCODE dropoffAddress → store dropoffLat, dropoffLng\n10. CONSTRUCT full JSON body\n11. CALL CREATE QUOTE HTTP TOOL\n\n###OUTPUT RULES###\n- Output ONLY valid JSON once all fields confirmed\n- ONLY exceptions: asking for missing fields, presenting options ONCE, geocoding error\n- No explanations, markdown, or extra text with JSON\n- All passengerInfo fields must be real values\n- returnDateTime must always be valid datetime string\n\n###CHAIN OF THOUGHT###\n1. READ entire message — extract every available field\n2. EXTRACT dates → VALIDATE immediately\n3. CHECK passengerInfo completeness\n4. CHECK NumberOfPassenger\n5. CHECK JourneyType — auto-match before asking\n6. CHECK VehicleType — auto-match before calling tool\n7. CHECK LuggageType — auto-match before presenting options\n8. Only ask for what is GENUINELY missing\n9. DETERMINE return trip type\n10. GEOCODE both addresses\n11. CONSTRUCT JSON\n12. SUBMIT to CREATE QUOTE HTTP TOOL\n\n###WHAT NOT TO DO###\n- NEVER CHAT OR EXPLAIN YOUR REASONING\n- NEVER USE HARDCODED LAT/LNG VALUES\n- NEVER SKIP GEOCODING\n- NEVER HARDCODE VEHICLE OR LUGGAGE TYPE\n- NEVER PROCEED WITHOUT COMPLETE passengerInfo\n- NEVER PROCEED WITHOUT GEOCODING BOTH ADDRESSES\n- NEVER OMIT REQUIRED FIELDS\n- NEVER USE INCORRECT DATE FORMATS\n- NEVER PROVIDE INVALID JSON\n- NEVER USE NULL OR EMPTY STRING FOR PASSENGERINFO\n- NEVER USE A STRING FOR NumberOfPassenger\n- NEVER ASK FOR CONFIRMATION OF ALREADY PROVIDED FIELDS\n- NEVER REPEAT ANY QUESTION THAT HAS ALREADY BEEN ANSWERED\n- NEVER ASK FOR VEHICLE TYPE MORE THAN ONCE\n- NEVER ASK FOR LUGGAGE TYPE MORE THAN ONCE\n- NEVER ASK FOR JOURNEY TYPE MORE THAN ONCE\n- NEVER PRESENT ANY LIST MORE THAN ONCE\n- NEVER ASK \"how many passengers per vehicle\"\n- NEVER DIVIDE PASSENGER COUNT ACROSS VEHICLES\n- NEVER USE null OR \"\" FOR returnDateTime\n- NEVER ASSUME A RETURN TRIP IF NOT MENTIONED\n- NEVER ASK \"would you like a return trip?\"\n- NEVER ACCEPT A PAST DATE\n- NEVER PROCEED TO ANY TOOL IF DATE IS IN THE PAST\n- NEVER USE \"Other\" AS A JOURNEY TYPE\n- NEVER PROCEED WITHOUT A VALID JourneyType\n- NEVER TREAT returnTrip = false AS INCOMPLETE"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -272,
+        -96
+      ],
+      "id": "0b311a39-6267-4b8c-baea-98c8f293cc0e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        144
+      ],
+      "id": "509fbe97-e3ed-4632-8ec1-1fef60df9faf",
+      "name": "OpenAI GPT-4o-mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "6kvgkghwGp9M6REL",
+          "name": "Open AI Account Bushire"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exclusive.ecoachmanager.com/api/booking/request",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login for Token').item.json.token }}"
+            },
+            {
+              "name": "AccessKey",
+              "value": "6W2NV@(LwVHpJ4I5&aMPMyXaM"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -48,
+        112
+      ],
+      "id": "aed880dd-a285-414b-a161-a2d6f3bda853",
+      "name": "Tool: HTTP Request (Create Quote)"
+    },
+    {
+      "parameters": {
+        "sendTo": "ursuperva.les@gmail.com",
+        "subject": "This is a Test ",
+        "message": "={{ $('When Executed by Another Workflow').item.json.request }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -736,
+        384
+      ],
+      "id": "88b918c1-c46c-4927-bf49-8bdb1aeb073b",
+      "name": "Send a message",
+      "webhookId": "dd71af99-a11e-4656-a009-6e5d272107bd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QP1FajtvKZsCa0c8",
+          "name": "Gmail account Les"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://maps.googleapis.com/maps/api/geocode/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "address",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyAQAFykAzyYpYB9APtCnHhBqemYZyKr238"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        112,
+        112
+      ],
+      "id": "57b879d3-4a14-4605-986d-9031543a7432",
+      "name": "Tool: Geocoding Maps"
+    },
+    {
+      "parameters": {
+        "url": "=https://exclusive.ecoachmanager.com/api/booking/availableVehicleTypes/{{ $('When Executed by Another Workflow').item.json.NumberofPassengers }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login for Token').item.json.token }}"
+            },
+            {
+              "name": "AccessKey",
+              "value": "6W2NV@(LwVHpJ4I5&aMPMyXaM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        272,
+        112
+      ],
+      "id": "0424f4b7-0c06-409d-84e2-8b772d0ba893",
+      "name": "Tools: Vehicle Type"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exclusive.ecoachmanager.com/api/auth/login",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"username\": \"N8N_HOSTINGER_ACCT\",\n  \"password\": \"n8nEBH2026@\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -448,
+        -96
+      ],
+      "id": "6d00f444-f366-470d-9921-73697a5c6d4b",
+      "name": "Login for Token"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.request }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        144
+      ],
+      "id": "ba0b859b-357b-429c-8f5a-87f80c7f4e30",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exclusive.ecoachmanager.com/api/booking/request",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login for Token').item.json.token }}"
+            },
+            {
+              "name": "AccessKey",
+              "value": "6W2NV@(LwVHpJ4I5&aMPMyXaM"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"pickupDateTime\": \"2026-04-12 15:00\",\n  \"pickupAddress\": \"Tower of London\",\n  \"pickupLat\": 51.5085985,\n  \"pickupLng\": -0.07633,\n  \"dropoffAddress\": \"London Bridge\",\n  \"dropoffLat\": 51.5059213,\n  \"dropoffLng\": -0.0874807,\n  \"NumberOfPassenger\": 9,\n  \"LuggageType\": \"No luggage\",\n  \"VehicleType\": \"Up to 13 Passengers (Small Standard Bus)\",\n  \"JourneyType\": \"Wedding\",\n  \"returnTrip\": false,\n  \"returnDateTime\": \"2026-04-12 15:01\",\n  \"passengerInfo\" : {\n    \"name\" : \"lest\",\n    \"email\" : \"sampleles11@gmail.com\",\n    \"phonenumber\" : \"09123456789\"\n  },\n  \"extRef\" : \"111111\",\n  \"notesCustomers\" : \"customer notes\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -416,
+        368
+      ],
+      "id": "3ac83b65-3be7-47f9-950e-a0517161de60",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "https://exclusive.ecoachmanager.com/api/booking/availableVehicleTypes/2\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login for Token').item.json.token }}"
+            },
+            {
+              "name": "AccessKey",
+              "value": "6W2NV@(LwVHpJ4I5&aMPMyXaM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        336
+      ],
+      "id": "313b3497-9911-41ef-90c6-307a03db0217",
+      "name": "Vehicle Type sample"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Login for Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: HTTP Request (Create Quote)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Geocoding Maps": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tools: Vehicle Type": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login for Token": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b356f693-05ae-41c4-9f4a-ae817444a7e0",
+  "meta": {
+    "instanceId": "813a5025ca13a784e42b410f96e5c01a74bd02215b7e46a00639a08dbf47ff41"
+  },
+  "id": "Tc2mWMyf7ve2jpRh",
+  "tags": []
+}
